@@ -24,10 +24,10 @@
     <button class="small-btn" style="float:right;" onclick="toggleKey()">Chiave API</button>
   </div>
   <div id="setup">
-    <input type="password" id="apiKey" placeholder="Incolla chiave Groq (gsk_...)">
+    <input type="password" id="apiKey" placeholder="Chiave Groq (gsk_...) o Google (AQ.Ab8...)">
     <button style="background:#34c759;color:#fff;border:none;font-weight:bold;" onclick="salvaKey()">Salva Chiave</button>
   </div>
-  <div id="chat">Pronto (Anatomia 1 - Auto-Modello). Fai una domanda.</div>
+  <div id="chat">Pronto (Anatomia 1 Diretto). Fai una domanda.</div>
   <textarea id="prompt" rows="2" placeholder="Es. Origine, inserzione e funzione del..."></textarea>
   <button id="sendBtn" onclick="invia()">Invia</button>
 
@@ -38,12 +38,24 @@
     var promptBox = document.getElementById('prompt');
     var sendBtn = document.getElementById('sendBtn');
 
-    var modelliDisponibili = [];
-    var systemPrompt = 'Sei un tutor universitario di Anatomia Umana (Anatomia 1) e Medicina. Rispondi in italiano con rigore accademico usando la Terminologia Anatomica ufficiale. Basa prioritariamente risposte, classificazioni, rapporti e nomenclatura sul programma standard di Anatomia 1 dell utente: 1) Generalita e terminologia (piani sagittale/frontale/trasverso, movimenti inclusi inversione/eversione piede, organi cavi a tonache vs pieni/parenchimatosi con capsula/stroma/parenchima, sistemi nervoso e immunitario vs apparati, cavita dorsale/ventrale, sierose). 2) Apparato locomotore: classificazione ossa e articolazioni (sinartrosi: suture, sindesmosi, gonfosi, sincondrosi, sinfisi, sinostosi; diartrosi: troclea, trocoide, artrodia, enartrosi, condilartrosi, a sella); rachide (C1 atlante 5 faccette, C2 epistrofeo 6 faccette, C7 prominente, legamenti longitudinali ant/post, gialli elastici, nucale, crociato, alari, membrana tectoria, art. di Luschka) e fascia lombodorsale a 3 foglietti; collo (osso ioide, fasce cervicali superficiale/media/profonda, 4 logge, triangoli sottomentoniero/sottomandibolare/muscolare/carotideo/omoclavicolare/omotrapezoidale, seno e glomo carotideo); pelvi e pelvimetria (stretto superiore/medio/inferiore, coniugate, nutazione e contronutazione); arto superiore e inferiore (assi anatomico/meccanico, angolo CCD, zampa d oca, legamenti anca/ginocchio/caviglia); per ogni muscolo (collo sopraioidei/sottoioidei/prevertebrali/laterali, dorso spinoappendicolari/spinocostali/propri, torace intrinseci ed estrinseci, diaframma con iati T8/T10/T12, addome, spalla/cuffia rotatori, braccio, avambraccio 4 strati ant + lat + 2 strati post, mano tenar/ipotenar/palmari, anca, coscia, gamba) indica schematicamente Posizione/Gruppo, Origine, Inserzione, Funzione, aggiungendo dalle tue conoscenze mediche generali anche Innervazione, Vascolarizzazione e cenni clinici quando utili. 3) Cardiovascolare: grande/piccolo circolo, cuore (vertebre cardiache di Giacomini T4-T8/T5-T9, aia cardiaca, solchi, crux cordis, trabecole carnee 1/2/3 ordine, fascio moderatore, valvole e noduli di Morgagni e Aranzio, scheletro fibroso e trigoni, conduzione SA/AV/His/Purkinje, triangolo di Koch e tendine di Todaro, trigono pericardico e focolai di auscultazione). 4) Linfatico: capillari, precollettori, collettori, linfangione, 5 tronchi, dotto toracico (cisterna del chilo a L2, arco a C7) e dotto linfatico dx, milza (funzione eritrocateretica/immunitaria, legamenti). 5) Respiratorio: vie aeree sup/inf, seni paranasali e meati di sbocco, faringe, 9 cartilagini laringee (5 principali, 4 accessorie), trachea (biforcazione T4/T5, carena), lobi e segmenti polmonari (10 dx, 9 sx), acino, pneumociti I/II, cellule di Clara, pori di Kohn, barriera ematogassosa a 3 strati, pleure. 6) Digerente: 9 quadranti addominali, tonache e plessi enterici di Meissner e Auerbach, esofago (4 restringimenti, anastomosi portocavale), peritoneo (intra/retro/infra/extraperitoneali), stomaco (rapporti, pacemaker gastrico, ghiandole e cellule), intestino tenue (duodeno, ghiandole di Brunner, papille duodenali, digiuno/ileo, villi e vaso chilifero, MALT), crasso (haustra, tenie, appendici epiploiche, 6 porzioni), pancreas (esocrino/endocrino, isolotti di Langerhans 5 tipi cellulari, fascia di Treitz), fegato (capsula di Glisson, solchi ad H, legamenti, ilo e peduncolo epatico, vie biliari). Formatta sempre in modo diretto, schematico e sintetico per lettura su schermo piccolo senza preamboli.';
+    var modelliGroq = [
+      'openai/gpt-oss-120b',
+      'meta-llama/llama-4-scout-17b-16e-instruct',
+      'qwen/qwen3-32b',
+      'llama-3.1-8b-instant'
+    ];
+    var modelliGoogle = [
+      'gemini-3.8-flash',
+      'gemini-3.8-flash-lite',
+      'gemini-2.5-flash-lite'
+    ];
+
+    var systemPrompt = 'Sei un tutor universitario di Anatomia Umana (Anatomia 1) e Medicina. Rispondi in italiano con rigore accademico e Terminologia Anatomica ufficiale, basandoti sul programma di Anatomia 1 dell utente (generalita/piani/organi cavi e pieni/sierose; locomotore: ossa, sinartrosi e diartrosi, rachide C1-C7/legamenti/Luschka, fasce-logge-triangoli del collo, pelvimetria/nutazione, arto sup/inf, e per ogni muscolo di collo, dorso, torace/diaframma, addome, spalla, braccio, avambraccio, mano, anca, coscia, gamba: Posizione, Origine, Inserzione, Funzione, piu Innervazione/Vascolarizzazione e clinica; cardiovascolare: cuore, Giacomini, solchi, trabecole, valvole, conduzione, Koch, focolai; linfatico: vasi, linfangione, dotto toracico, milza; respiratorio: seni paranasali, laringe 9 cartilagini, trachea, lobi/segmenti polmonari, acino, pneumociti, barriera ematogassosa, pleure; digerente: quadranti, plessi Meissner/Auerbach, esofago, peritoneo, stomaco, duodeno/Brunner, tenue/crasso, pancreas/Langerhans, fegato/Glisson/peduncolo). Sii diretto, schematico e sintetico per schermo piccolo, senza preamboli.';
     var cronologia = [{ role: 'system', content: systemPrompt }];
 
-    if (localStorage.getItem('groq_key')) {
-      keyInput.value = localStorage.getItem('groq_key');
+    var savedKey = localStorage.getItem('api_key') || localStorage.getItem('groq_key') || '';
+    if (savedKey) {
+      keyInput.value = savedKey;
       setupBox.style.display = 'none';
     }
 
@@ -53,10 +65,10 @@
 
     function salvaKey() {
       var k = keyInput.value.replace(/\s+/g, '');
+      localStorage.setItem('api_key', k);
       localStorage.setItem('groq_key', k);
-      modelliDisponibili = [];
       if (k) { setupBox.style.display = 'none'; }
-      alert('Chiave Groq salvata!');
+      alert('Chiave salvata!');
     }
 
     function nuovaChat() {
@@ -77,99 +89,31 @@
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function modelloValido(id) {
-      var s = id.toLowerCase();
-      if (s.indexOf('whisper') !== -1) return false;
-      if (s.indexOf('tts') !== -1) return false;
-      if (s.indexOf('guard') !== -1) return false;
-      if (s.indexOf('orpheus') !== -1) return false;
-      if (s.indexOf('embed') !== -1) return false;
-      return true;
-    }
-
-    function punteggioModello(id) {
-      var s = id.toLowerCase();
-      var p = 0;
-      if (s.indexOf('70b') !== -1 || s.indexOf('maverick') !== -1 || s.indexOf('120b') !== -1) p += 50;
-      if (s.indexOf('llama-4') !== -1 || s.indexOf('llama-3') !== -1 || s.indexOf('qwen') !== -1 || s.indexOf('gpt-oss') !== -1) p += 30;
-      if (s.indexOf('scout') !== -1 || s.indexOf('32b') !== -1 || s.indexOf('versatile') !== -1) p += 20;
-      if (s.indexOf('8b') !== -1 || s.indexOf('instant') !== -1) p += 10;
-      return p;
-    }
-
-    function caricaModelli(key, callback) {
-      if (modelliDisponibili.length > 0) { callback(null); return; }
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', 'https://api.groq.com/openai/v1/models', true);
-      xhr.setRequestHeader('Authorization', 'Bearer ' + key);
-      xhr.timeout = 12000;
-
-      xhr.ontimeout = function() {
-        callback('Timeout verifica modelli Groq. Riprova.');
-      };
-      xhr.onerror = function() {
-        callback('Errore di rete nella verifica modelli Groq.');
-      };
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 0) return;
-          if (xhr.status === 200) {
-            try {
-              var res = JSON.parse(xhr.responseText);
-              var lista = res.data || [];
-              var validi = [];
-              for (var i = 0; i < lista.length; i++) {
-                if (lista[i].id && modelloValido(lista[i].id)) {
-                  validi.push(lista[i].id);
-                }
-              }
-              validi.sort(function(a, b) {
-                return punteggioModello(b) - punteggioModello(a);
-              });
-              if (validi.length > 0) {
-                modelliDisponibili = validi;
-                callback(null);
-              } else {
-                callback('Nessun modello testuale disponibile su questo account Groq.');
-              }
-            } catch (e) {
-              callback('Errore lettura elenco modelli: ' + e.message);
-            }
-          } else {
-            callback('Errore chiave Groq (' + xhr.status + '): ' + xhr.responseText);
-          }
-        }
-      };
-      xhr.send();
-    }
-
-    function inviaConModello(key, indice) {
-      if (indice >= modelliDisponibili.length) {
+    function inviaGroq(key, indice) {
+      if (indice >= modelliGroq.length) {
         resetBtn();
-        aggiungiTesto('bot', 'Nessun modello ha risposto. Riprova tra qualche secondo.');
+        aggiungiTesto('bot', 'Nessun modello Groq ha risposto. Riprova o usa la chiave Google (AQ.Ab8...).');
         return;
       }
-
-      sendBtn.textContent = indice === 0 ? 'Invio...' : 'Riprovo...';
+      sendBtn.textContent = indice === 0 ? 'Invio...' : 'Riprovo (' + (indice + 1) + ')...';
 
       var xhr = new XMLHttpRequest();
       xhr.open('POST', 'https://api.groq.com/openai/v1/chat/completions', true);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('Authorization', 'Bearer ' + key);
-      xhr.timeout = 15000;
+      xhr.timeout = 25000;
 
       xhr.ontimeout = function() {
-        inviaConModello(key, indice + 1);
+        resetBtn();
+        aggiungiTesto('bot', 'Timeout hotspot (25s). Tocca Invia per riprovare.');
       };
-
       xhr.onerror = function() {
         resetBtn();
-        aggiungiTesto('bot', 'Errore di rete: verifica la connessione hotspot.');
+        aggiungiTesto('bot', 'Errore di rete hotspot.');
       };
-
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
-          if (xhr.status === 0) { return; }
+          if (xhr.status === 0) return;
           if (xhr.status === 200) {
             resetBtn();
             try {
@@ -178,10 +122,10 @@
               cronologia.push({ role: 'assistant', content: risposta });
               aggiungiTesto('bot', risposta);
             } catch (e) {
-              aggiungiTesto('bot', 'Errore lettura risposta: ' + e.message);
+              aggiungiTesto('bot', 'Errore risposta: ' + e.message);
             }
           } else if (xhr.status === 404 || xhr.status === 400 || xhr.status === 429 || xhr.status === 503) {
-            inviaConModello(key, indice + 1);
+            inviaGroq(key, indice + 1);
           } else {
             resetBtn();
             aggiungiTesto('bot', 'Errore HTTP ' + xhr.status + ': ' + xhr.responseText);
@@ -190,32 +134,86 @@
       };
 
       xhr.send(JSON.stringify({
-        model: modelliDisponibili[indice],
+        model: modelliGroq[indice],
         temperature: 0.2,
         messages: cronologia
+      }));
+    }
+
+    function inviaGoogle(key, indice) {
+      if (indice >= modelliGoogle.length) {
+        resetBtn();
+        aggiungiTesto('bot', 'Server Google temporaneamente occupati. Riprova tra qualche secondo.');
+        return;
+      }
+      sendBtn.textContent = indice === 0 ? 'Invio...' : 'Riprovo (' + (indice + 1) + ')...';
+
+      var contents = [];
+      for (var i = 1; i < cronologia.length; i++) {
+        contents.push({
+          role: cronologia[i].role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: cronologia[i].content }]
+        });
+      }
+
+      var xhr = new XMLHttpRequest();
+      var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelliGoogle[indice] + ':generateContent?key=' + encodeURIComponent(key);
+      xhr.open('POST', url, true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.timeout = 25000;
+
+      xhr.ontimeout = function() {
+        resetBtn();
+        aggiungiTesto('bot', 'Timeout hotspot (25s). Tocca Invia per riprovare.');
+      };
+      xhr.onerror = function() {
+        resetBtn();
+        aggiungiTesto('bot', 'Errore di rete hotspot.');
+      };
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 0) return;
+          if (xhr.status === 200) {
+            resetBtn();
+            try {
+              var res = JSON.parse(xhr.responseText);
+              var risposta = res.candidates[0].content.parts[0].text;
+              cronologia.push({ role: 'assistant', content: risposta });
+              aggiungiTesto('bot', risposta);
+            } catch (e) {
+              aggiungiTesto('bot', 'Errore risposta: ' + e.message);
+            }
+          } else if (xhr.status === 404 || xhr.status === 429 || xhr.status === 503) {
+            inviaGoogle(key, indice + 1);
+          } else {
+            resetBtn();
+            aggiungiTesto('bot', 'Errore HTTP ' + xhr.status + ': ' + xhr.responseText);
+          }
+        }
+      };
+
+      xhr.send(JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: contents
       }));
     }
 
     function invia() {
       var key = keyInput.value.replace(/\s+/g, '');
       var testo = promptBox.value;
-      if (!key) { setupBox.style.display = 'block'; alert('Inserisci prima la API Key Groq.'); return; }
-      if (!testo) { return; }
+      if (!key) { setupBox.style.display = 'block'; alert('Inserisci prima la Chiave API.'); return; }
+      if (!testo) return;
 
       aggiungiTesto('user', 'Tu: ' + testo);
+      cronologia.push({ role: 'user', content: testo });
       promptBox.value = '';
       sendBtn.disabled = true;
-      sendBtn.textContent = 'Connessione...';
 
-      caricaModelli(key, function(err) {
-        if (err) {
-          resetBtn();
-          aggiungiTesto('bot', err);
-          return;
-        }
-        cronologia.push({ role: 'user', content: testo });
-        inviaConModello(key, 0);
-      });
+      if (key.indexOf('AQ.') === 0 || key.indexOf('AIza') === 0) {
+        inviaGoogle(key, 0);
+      } else {
+        inviaGroq(key, 0);
+      }
     }
   </script>
 </body>
