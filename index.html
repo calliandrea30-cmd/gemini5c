@@ -27,8 +27,8 @@
     <input type="password" id="apiKey" placeholder="Chiave Groq (gsk_...) o Google (AQ.Ab8...)">
     <button style="background:#34c759;color:#fff;border:none;font-weight:bold;" onclick="salvaKey()">Salva Chiave</button>
   </div>
-  <div id="chat">Pronto (Anatomia 1 Diretto). Fai una domanda.</div>
-  <textarea id="prompt" rows="2" placeholder="Es. Origine, inserzione e funzione del..."></textarea>
+  <div id="chat">Pronto (Anatomia 1 - Risposte secche). Fai una domanda.</div>
+  <textarea id="prompt" rows="2" placeholder="Es. Origine e inserzione del..."></textarea>
   <button id="sendBtn" onclick="invia()">Invia</button>
 
   <script>
@@ -50,7 +50,7 @@
       'gemini-2.5-flash-lite'
     ];
 
-    var systemPrompt = 'Sei un tutor universitario di Anatomia Umana (Anatomia 1) e Medicina. Rispondi in italiano con rigore accademico e Terminologia Anatomica ufficiale, basandoti sul programma di Anatomia 1 dell utente (generalita/piani/organi cavi e pieni/sierose; locomotore: ossa, sinartrosi e diartrosi, rachide C1-C7/legamenti/Luschka, fasce-logge-triangoli del collo, pelvimetria/nutazione, arto sup/inf, e per ogni muscolo di collo, dorso, torace/diaframma, addome, spalla, braccio, avambraccio, mano, anca, coscia, gamba: Posizione, Origine, Inserzione, Funzione, piu Innervazione/Vascolarizzazione e clinica; cardiovascolare: cuore, Giacomini, solchi, trabecole, valvole, conduzione, Koch, focolai; linfatico: vasi, linfangione, dotto toracico, milza; respiratorio: seni paranasali, laringe 9 cartilagini, trachea, lobi/segmenti polmonari, acino, pneumociti, barriera ematogassosa, pleure; digerente: quadranti, plessi Meissner/Auerbach, esofago, peritoneo, stomaco, duodeno/Brunner, tenue/crasso, pancreas/Langerhans, fegato/Glisson/peduncolo). Sii diretto, schematico e sintetico per schermo piccolo, senza preamboli.';
+    var systemPrompt = 'Sei un tutor universitario di Anatomia Umana (Anatomia 1) e Medicina. Rispondi in italiano con rigore accademico e Terminologia Anatomica ufficiale, basandoti sul programma di Anatomia 1 (generalita, piani, organi cavi e pieni, sierose; locomotore: ossa, sinartrosi e diartrosi, rachide C1-C7 e legamenti, fasce-logge-triangoli del collo, pelvimetria, arto superiore e inferiore, muscoli di collo, dorso, torace/diaframma, addome, spalla, braccio, avambraccio, mano, anca, coscia, gamba con posizione, origine, inserzione e funzione; cardiovascolare: cuore, Giacomini, solchi, trabecole, valvole, conduzione, Koch, focolai; linfatico: vasi, linfangione, dotto toracico, milza; respiratorio: seni paranasali, laringe, trachea, polmoni, acino, pleure; digerente: quadranti, plessi Meissner/Auerbach, esofago, peritoneo, stomaco, duodeno/Brunner, tenue/crasso, pancreas, fegato). REGOLE DI RISPOSTA: 1) Rispondi SOLO ed esclusivamente a cio che viene chiesto, in modo secco, diretto e conciso (massimo 3-4 righe per domande puntuali come origine, inserzione, funzione o rapporti). 2) Zero preamboli, zero introduzioni e zero approfondimenti non richiesti. 3) Se viene chiesto un elenco, usa solo un elenco puntato semplice con trattino (- ) e al massimo 2-3 righe di spiegazione. 4) VIETATO usare formattazione Markdown: non scrivere mai asterischi (* o **), cancelletti (#) o tabelle con barrette (|), perche lo schermo mostra solo testo semplice e quei simboli diventano illeggibili.';
     var cronologia = [{ role: 'system', content: systemPrompt }];
 
     var savedKey = localStorage.getItem('api_key') || localStorage.getItem('groq_key') || '';
@@ -92,7 +92,7 @@
     function inviaGroq(key, indice) {
       if (indice >= modelliGroq.length) {
         resetBtn();
-        aggiungiTesto('bot', 'Nessun modello Groq ha risposto. Riprova o usa la chiave Google (AQ.Ab8...).');
+        aggiungiTesto('bot', 'Nessun modello Groq ha risposto. Riprova tra qualche secondo.');
         return;
       }
       sendBtn.textContent = indice === 0 ? 'Invio...' : 'Riprovo (' + (indice + 1) + ')...';
