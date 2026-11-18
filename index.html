@@ -27,7 +27,7 @@
     <input type="password" id="apiKey" placeholder="Chiave Groq (gsk_...) o Google (AQ.Ab8...)">
     <button style="background:#34c759;color:#fff;border:none;font-weight:bold;" onclick="salvaKey()">Salva Chiave</button>
   </div>
-  <div id="chat">Pronto (Anatomia 1 - Risposte secche). Fai una domanda.</div>
+  <div id="chat">Pronto (Anatomia 1 - Alta Precisione). Fai una domanda.</div>
   <textarea id="prompt" rows="2" placeholder="Es. Origine e inserzione del..."></textarea>
   <button id="sendBtn" onclick="invia()">Invia</button>
 
@@ -39,9 +39,8 @@
     var sendBtn = document.getElementById('sendBtn');
 
     var modelliGroq = [
-      'openai/gpt-oss-120b',
+      'meta-llama/llama-4-maverick-17b-128e-instruct',
       'meta-llama/llama-4-scout-17b-16e-instruct',
-      'qwen/qwen3-32b',
       'llama-3.1-8b-instant'
     ];
     var modelliGoogle = [
@@ -50,7 +49,7 @@
       'gemini-2.5-flash-lite'
     ];
 
-    var systemPrompt = 'Sei un tutor universitario di Anatomia Umana (Anatomia 1) e Medicina. Rispondi in italiano con rigore accademico e Terminologia Anatomica ufficiale, basandoti sul programma di Anatomia 1 (generalita, piani, organi cavi e pieni, sierose; locomotore: ossa, sinartrosi e diartrosi, rachide C1-C7 e legamenti, fasce-logge-triangoli del collo, pelvimetria, arto superiore e inferiore, muscoli di collo, dorso, torace/diaframma, addome, spalla, braccio, avambraccio, mano, anca, coscia, gamba con posizione, origine, inserzione e funzione; cardiovascolare: cuore, Giacomini, solchi, trabecole, valvole, conduzione, Koch, focolai; linfatico: vasi, linfangione, dotto toracico, milza; respiratorio: seni paranasali, laringe, trachea, polmoni, acino, pleure; digerente: quadranti, plessi Meissner/Auerbach, esofago, peritoneo, stomaco, duodeno/Brunner, tenue/crasso, pancreas, fegato). REGOLE DI RISPOSTA: 1) Rispondi SOLO ed esclusivamente a cio che viene chiesto, in modo secco, diretto e conciso (massimo 3-4 righe per domande puntuali come origine, inserzione, funzione o rapporti). 2) Zero preamboli, zero introduzioni e zero approfondimenti non richiesti. 3) Se viene chiesto un elenco, usa solo un elenco puntato semplice con trattino (- ) e al massimo 2-3 righe di spiegazione. 4) VIETATO usare formattazione Markdown: non scrivere mai asterischi (* o **), cancelletti (#) o tabelle con barrette (|), perche lo schermo mostra solo testo semplice e quei simboli diventano illeggibili.';
+    var systemPrompt = 'Sei un professore universitario di Anatomia Umana (Anatomia 1) e Medicina. Rispondi in italiano con assoluta precisione accademica secondo la Terminologia Anatomica ufficiale e il programma di Anatomia 1 (generalita, piani, organi cavi e pieni, sierose; locomotore: ossa, sinartrosi e diartrosi, rachide C1-C7 e legamenti, fasce-logge-triangoli del collo, pelvimetria, arto superiore e inferiore, muscoli di collo sopraioidei/sottoioidei/prevertebrali/laterali, dorso spinoappendicolari/spinocostali/propri, torace intrinseci ed estrinseci, diaframma, addome, spalla, braccio, avambraccio, mano, anca, coscia, gamba con gruppo, origine, inserzione e funzione; cardiovascolare: cuore, Giacomini, solchi, trabecole, valvole, conduzione, Koch, focolai; linfatico: vasi, linfangione, dotto toracico, milza; respiratorio: seni paranasali, laringe, trachea, polmoni, acino, pleure; digerente: quadranti, plessi Meissner/Auerbach, esofago, peritoneo, stomaco, duodeno/Brunner, tenue/crasso, pancreas, fegato). VERIFICA ACCURATEZZA: prima di rispondere verifica con estremo rigore di non invertire mai origine e inserzione, destra e sinistra, anteriore e posteriore, o gruppi muscolari; non tirare mai a indovinare. REGOLE DI STILE: 1) Rispondi SOLO a cio che viene chiesto, in massimo 3-4 righe secche e dirette. 2) Zero preamboli, zero introduzioni, zero dettagli non richiesti. 3) Per gli elenchi usa solo trattino (- ) e al massimo 2-3 righe di spiegazione. 4) Mai usare asterischi, cancelletti o tabelle.';
     var cronologia = [{ role: 'system', content: systemPrompt }];
 
     var savedKey = localStorage.getItem('api_key') || localStorage.getItem('groq_key') || '';
@@ -81,6 +80,10 @@
       sendBtn.textContent = 'Invia';
     }
 
+    function pulisciTesto(t) {
+      return t.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/[*#|]/g, '').replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
+    }
+
     function aggiungiTesto(classe, testo) {
       var div = document.createElement('div');
       div.className = classe;
@@ -92,7 +95,7 @@
     function inviaGroq(key, indice) {
       if (indice >= modelliGroq.length) {
         resetBtn();
-        aggiungiTesto('bot', 'Nessun modello Groq ha risposto. Riprova tra qualche secondo.');
+        aggiungiTesto('bot', 'Connessione hotspot instabile. Tocca Invia per riprovare.');
         return;
       }
       sendBtn.textContent = indice === 0 ? 'Invio...' : 'Riprovo (' + (indice + 1) + ')...';
@@ -101,11 +104,10 @@
       xhr.open('POST', 'https://api.groq.com/openai/v1/chat/completions', true);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('Authorization', 'Bearer ' + key);
-      xhr.timeout = 25000;
+      xhr.timeout = 10000;
 
       xhr.ontimeout = function() {
-        resetBtn();
-        aggiungiTesto('bot', 'Timeout hotspot (25s). Tocca Invia per riprovare.');
+        inviaGroq(key, indice + 1);
       };
       xhr.onerror = function() {
         resetBtn();
@@ -118,7 +120,7 @@
             resetBtn();
             try {
               var res = JSON.parse(xhr.responseText);
-              var risposta = res.choices[0].message.content;
+              var risposta = pulisciTesto(res.choices[0].message.content);
               cronologia.push({ role: 'assistant', content: risposta });
               aggiungiTesto('bot', risposta);
             } catch (e) {
@@ -135,7 +137,8 @@
 
       xhr.send(JSON.stringify({
         model: modelliGroq[indice],
-        temperature: 0.2,
+        temperature: 0.0,
+        max_tokens: 240,
         messages: cronologia
       }));
     }
@@ -143,7 +146,7 @@
     function inviaGoogle(key, indice) {
       if (indice >= modelliGoogle.length) {
         resetBtn();
-        aggiungiTesto('bot', 'Server Google temporaneamente occupati. Riprova tra qualche secondo.');
+        aggiungiTesto('bot', 'Server Google occupati. Riprova tra qualche secondo.');
         return;
       }
       sendBtn.textContent = indice === 0 ? 'Invio...' : 'Riprovo (' + (indice + 1) + ')...';
@@ -160,11 +163,10 @@
       var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelliGoogle[indice] + ':generateContent?key=' + encodeURIComponent(key);
       xhr.open('POST', url, true);
       xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.timeout = 25000;
+      xhr.timeout = 10000;
 
       xhr.ontimeout = function() {
-        resetBtn();
-        aggiungiTesto('bot', 'Timeout hotspot (25s). Tocca Invia per riprovare.');
+        inviaGoogle(key, indice + 1);
       };
       xhr.onerror = function() {
         resetBtn();
@@ -177,7 +179,7 @@
             resetBtn();
             try {
               var res = JSON.parse(xhr.responseText);
-              var risposta = res.candidates[0].content.parts[0].text;
+              var risposta = pulisciTesto(res.candidates[0].content.parts[0].text);
               cronologia.push({ role: 'assistant', content: risposta });
               aggiungiTesto('bot', risposta);
             } catch (e) {
@@ -194,6 +196,7 @@
 
       xhr.send(JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { maxOutputTokens: 240, temperature: 0.0 },
         contents: contents
       }));
     }
@@ -206,6 +209,9 @@
 
       aggiungiTesto('user', 'Tu: ' + testo);
       cronologia.push({ role: 'user', content: testo });
+      if (cronologia.length > 7) {
+        cronologia = [cronologia[0]].concat(cronologia.slice(cronologia.length - 6));
+      }
       promptBox.value = '';
       sendBtn.disabled = true;
 
