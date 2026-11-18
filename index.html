@@ -21,7 +21,7 @@
     <input type="password" id="apiKey" placeholder="Incolla qui la chiave API (AQ.Ab8...)">
     <button onclick="salvaKey()">Salva Chiave</button>
   </div>
-  <div id="chat">Pronto (Gemini 3.8 Flash). Scrivi un messaggio qui sotto.</div>
+  <div id="chat">Pronto (v3). Scrivi un messaggio qui sotto.</div>
   <textarea id="prompt" rows="2" placeholder="Scrivi a Gemini..."></textarea>
   <button id="sendBtn" onclick="invia()">Invia</button>
 
@@ -38,6 +38,11 @@
     function salvaKey() {
       localStorage.setItem('gemini_key', keyInput.value.replace(/\s+/g, ''));
       alert('Chiave salvata!');
+    }
+
+    function resetBtn() {
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Invia';
     }
 
     function aggiungiTesto(classe, testo) {
@@ -57,17 +62,28 @@
       aggiungiTesto('user', 'Tu: ' + testo);
       promptBox.value = '';
       sendBtn.disabled = true;
-      sendBtn.textContent = 'Attendi...';
+      sendBtn.textContent = 'Invio in corso...';
 
       var xhr = new XMLHttpRequest();
       var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=' + encodeURIComponent(key);
       xhr.open('POST', url, true);
       xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.timeout = 15000;
+
+      xhr.ontimeout = function() {
+        resetBtn();
+        aggiungiTesto('bot', 'Timeout: connessione hotspot troppo lenta o bloccata (15s). Riprova.');
+      };
+
+      xhr.onerror = function() {
+        resetBtn();
+        aggiungiTesto('bot', 'Errore di rete: controlla la connessione hotspot o il certificato SSL.');
+      };
 
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
-          sendBtn.disabled = false;
-          sendBtn.textContent = 'Invia';
+          resetBtn();
+          if (xhr.status === 0) { return; }
           if (xhr.status === 200) {
             try {
               var res = JSON.parse(xhr.responseText);
