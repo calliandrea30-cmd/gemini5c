@@ -21,7 +21,7 @@
     <input type="password" id="apiKey" placeholder="Incolla qui la chiave API (AQ.Ab8...)">
     <button onclick="salvaKey()">Salva Chiave</button>
   </div>
-  <div id="chat">Pronto (v3). Scrivi un messaggio qui sotto.</div>
+  <div id="chat">Pronto (v4). Scrivi un messaggio qui sotto.</div>
   <textarea id="prompt" rows="2" placeholder="Scrivi a Gemini..."></textarea>
   <button id="sendBtn" onclick="invia()">Invia</button>
 
@@ -30,6 +30,7 @@
     var chatBox = document.getElementById('chat');
     var promptBox = document.getElementById('prompt');
     var sendBtn = document.getElementById('sendBtn');
+    var modelli = ['models/gemini-3.8-flash', 'models/gemini-3.8-flash-lite', 'models/gemini-2.5-flash-lite'];
 
     if (localStorage.getItem('gemini_key')) {
       keyInput.value = localStorage.getItem('gemini_key');
@@ -53,6 +54,57 @@
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
+    function inviaConModello(key, testo, indice) {
+      if (indice >= modelli.length) {
+        resetBtn();
+        aggiungiTesto('bot', 'Server Google occupati (503). Riprova tra qualche secondo.');
+        return;
+      }
+
+      var modello = modelli[indice];
+      sendBtn.textContent = indice === 0 ? 'Invio...' : 'Riprovo (' + (indice + 1) + ')...';
+
+      var xhr = new XMLHttpRequest();
+      var url = 'https://generativelanguage.googleapis.com/v1beta/' + modello + ':generateContent?key=' + encodeURIComponent(key);
+      xhr.open('POST', url, true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.timeout = 15000;
+
+      xhr.ontimeout = function() {
+        inviaConModello(key, testo, indice + 1);
+      };
+
+      xhr.onerror = function() {
+        resetBtn();
+        aggiungiTesto('bot', 'Errore di rete: controlla la connessione hotspot.');
+      };
+
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 0) { return; }
+          if (xhr.status === 200) {
+            resetBtn();
+            try {
+              var res = JSON.parse(xhr.responseText);
+              var risposta = res.candidates[0].content.parts[0].text;
+              aggiungiTesto('bot', 'Gemini: ' + risposta);
+            } catch (e) {
+              aggiungiTesto('bot', 'Errore lettura risposta: ' + e.message);
+            }
+          } else if (xhr.status === 503 || xhr.status === 404 || xhr.status === 429) {
+            inviaConModello(key, testo, indice + 1);
+          } else {
+            resetBtn();
+            aggiungiTesto('bot', 'Errore HTTP ' + xhr.status + ': ' + xhr.responseText);
+          }
+        }
+      };
+
+      xhr.send(JSON.stringify({
+        contents: [{ parts: [{ text: testo }] }]
+      }));
+    }
+
     function invia() {
       var key = keyInput.value.replace(/\s+/g, '');
       var testo = promptBox.value;
@@ -62,46 +114,7 @@
       aggiungiTesto('user', 'Tu: ' + testo);
       promptBox.value = '';
       sendBtn.disabled = true;
-      sendBtn.textContent = 'Invio in corso...';
-
-      var xhr = new XMLHttpRequest();
-      var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=' + encodeURIComponent(key);
-      xhr.open('POST', url, true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.timeout = 15000;
-
-      xhr.ontimeout = function() {
-        resetBtn();
-        aggiungiTesto('bot', 'Timeout: connessione hotspot troppo lenta o bloccata (15s). Riprova.');
-      };
-
-      xhr.onerror = function() {
-        resetBtn();
-        aggiungiTesto('bot', 'Errore di rete: controlla la connessione hotspot o il certificato SSL.');
-      };
-
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-          resetBtn();
-          if (xhr.status === 0) { return; }
-          if (xhr.status === 200) {
-            try {
-              var res = JSON.parse(xhr.responseText);
-              var risposta = res.candidates[0].content.parts[0].text;
-              aggiungiTesto('bot', 'Gemini: ' + risposta);
-            } catch (e) {
-              aggiungiTesto('bot', 'Errore lettura risposta: ' + e.message);
-            }
-          } else {
-            aggiungiTesto('bot', 'Errore HTTP ' + xhr.status + ': ' + xhr.responseText);
-          }
-        }
-      };
-
-      var payload = JSON.stringify({
-        contents: [{ parts: [{ text: testo }] }]
-      });
-      xhr.send(payload);
+      inviaConModello(key, testo, 0);
     }
   </script>
 </body>
