@@ -4,41 +4,63 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Gemini 5c</title>
+  <title>Anatomia 1 - 5c</title>
   <style>
-    body { font-family: -apple-system, Helvetica, sans-serif; margin: 0; padding: 10px; background: #f2f2f7; color: #111; }
-    #setup { background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
-    input, textarea, button { width: 100%; box-sizing: border-box; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; padding: 8px; margin-top: 6px; }
-    button { background: #007aff; color: #fff; border: none; font-weight: bold; padding: 10px; }
-    button:disabled { background: #99c9ff; }
-    #chat { background: #fff; border-radius: 8px; padding: 10px; min-height: 240px; max-height: 55vh; overflow-y: auto; margin-bottom: 10px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4; }
-    .user { color: #007aff; font-weight: bold; margin-top: 10px; }
+    body { font-family: -apple-system, Helvetica, sans-serif; margin: 0; padding: 8px; background: #f2f2f7; color: #111; }
+    #topbar { margin-bottom: 6px; overflow: hidden; }
+    .small-btn { width: 48%; background: #e5e5ea; color: #111; font-size: 13px; padding: 7px; border: none; border-radius: 6px; font-weight: bold; }
+    #setup { background: #fff; padding: 8px; border-radius: 8px; margin-bottom: 8px; }
+    input, textarea, button { width: 100%; box-sizing: border-box; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; padding: 8px; margin-top: 5px; }
+    #sendBtn { background: #007aff; color: #fff; border: none; font-weight: bold; padding: 10px; }
+    #sendBtn:disabled { background: #99c9ff; }
+    #chat { background: #fff; border-radius: 8px; padding: 10px; min-height: 230px; max-height: 56vh; overflow-y: auto; margin-bottom: 8px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4; font-size: 15px; }
+    .user { color: #007aff; font-weight: bold; margin-top: 8px; }
     .bot { color: #111; margin-top: 4px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
   </style>
 </head>
 <body>
-  <div id="setup">
-    <input type="password" id="apiKey" placeholder="Incolla qui la chiave API (AQ.Ab8...)">
-    <button onclick="salvaKey()">Salva Chiave</button>
+  <div id="topbar">
+    <button class="small-btn" style="float:left;" onclick="nuovaChat()">Nuova chat</button>
+    <button class="small-btn" style="float:right;" onclick="toggleKey()">Chiave API</button>
   </div>
-  <div id="chat">Pronto (v4). Scrivi un messaggio qui sotto.</div>
-  <textarea id="prompt" rows="2" placeholder="Scrivi a Gemini..."></textarea>
+  <div id="setup">
+    <input type="password" id="apiKey" placeholder="Incolla chiave Groq (gsk_...)">
+    <button style="background:#34c759;color:#fff;border:none;font-weight:bold;" onclick="salvaKey()">Salva Chiave</button>
+  </div>
+  <div id="chat">Pronto (Programma Anatomia 1 attivo). Fai una domanda.</div>
+  <textarea id="prompt" rows="2" placeholder="Es. Origine, inserzione e funzione del..."></textarea>
   <button id="sendBtn" onclick="invia()">Invia</button>
 
   <script>
     var keyInput = document.getElementById('apiKey');
+    var setupBox = document.getElementById('setup');
     var chatBox = document.getElementById('chat');
     var promptBox = document.getElementById('prompt');
     var sendBtn = document.getElementById('sendBtn');
-    var modelli = ['models/gemini-3.8-flash', 'models/gemini-3.8-flash-lite', 'models/gemini-2.5-flash-lite'];
 
-    if (localStorage.getItem('gemini_key')) {
-      keyInput.value = localStorage.getItem('gemini_key');
+    var modelli = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+    var systemPrompt = 'Sei un tutor universitario di Anatomia Umana (Anatomia 1) e Medicina. Rispondi in italiano con rigore accademico usando la Terminologia Anatomica ufficiale. Basa prioritariamente risposte, classificazioni, rapporti e nomenclatura sul programma standard di Anatomia 1 dell utente: 1) Generalita e terminologia (piani sagittale/frontale/trasverso, movimenti inclusi inversione/eversione piede, organi cavi a tonache vs pieni/parenchimatosi con capsula/stroma/parenchima, sistemi nervoso e immunitario vs apparati, cavita dorsale/ventrale, sierose). 2) Apparato locomotore: classificazione ossa e articolazioni (sinartrosi: suture, sindesmosi, gonfosi, sincondrosi, sinfisi, sinostosi; diartrosi: troclea, trocoide, artrodia, enartrosi, condilartrosi, a sella); rachide (C1 atlante 5 faccette, C2 epistrofeo 6 faccette, C7 prominente, legamenti longitudinali ant/post, gialli elastici, nucale, crociato, alari, membrana tectoria, art. di Luschka) e fascia lombodorsale a 3 foglietti; collo (osso ioide, fasce cervicali superficiale/media/profonda, 4 logge, triangoli sottomentoniero/sottomandibolare/muscolare/carotideo/omoclavicolare/omotrapezoidale, seno e glomo carotideo); pelvi e pelvimetria (stretto superiore/medio/inferiore, coniugate, nutazione e contronutazione); arto superiore e inferiore (assi anatomico/meccanico, angolo CCD, zampa d oca, legamenti anca/ginocchio/caviglia); per ogni muscolo (collo sopraioidei/sottoioidei/prevertebrali/laterali, dorso spinoappendicolari/spinocostali/propri, torace intrinseci ed estrinseci, diaframma con iati T8/T10/T12, addome, spalla/cuffia rotatori, braccio, avambraccio 4 strati ant + lat + 2 strati post, mano tenar/ipotenar/palmari, anca, coscia, gamba) indica schematicamente Posizione/Gruppo, Origine, Inserzione, Funzione, aggiungendo dalle tue conoscenze mediche generali anche Innervazione, Vascolarizzazione e cenni clinici quando utili. 3) Cardiovascolare: grande/piccolo circolo, cuore (vertebre cardiache di Giacomini T4-T8/T5-T9, aia cardiaca, solchi, crux cordis, trabecole carnee 1/2/3 ordine, fascio moderatore, valvole e noduli di Morgagni e Aranzio, scheletro fibroso e trigoni, conduzione SA/AV/His/Purkinje, triangolo di Koch e tendine di Todaro, trigono pericardico e focolai di auscultazione). 4) Linfatico: capillari, precollettori, collettori, linfangione, 5 tronchi, dotto toracico (cisterna del chilo a L2, arco a C7) e dotto linfatico dx, milza (funzione eritrocateretica/immunitaria, legamenti). 5) Respiratorio: vie aeree sup/inf, seni paranasali e meati di sbocco, faringe, 9 cartilagini laringee (5 principali, 4 accessorie), trachea (biforcazione T4/T5, carena), lobi e segmenti polmonari (10 dx, 9 sx), acino, pneumociti I/II, cellule di Clara, pori di Kohn, barriera ematogassosa a 3 strati, pleure. 6) Digerente: 9 quadranti addominali, tonache e plessi enterici di Meissner e Auerbach, esofago (4 restringimenti, anastomosi portocavale), peritoneo (intra/retro/infra/extraperitoneali), stomaco (rapporti, pacemaker gastrico, ghiandole e cellule), intestino tenue (duodeno, ghiandole di Brunner, papille duodenali, digiuno/ileo, villi e vaso chilifero, MALT), crasso (haustra, tenie, appendici epiploiche, 6 porzioni), pancreas (esocrino/endocrino, isolotti di Langerhans 5 tipi cellulari, fascia di Treitz), fegato (capsula di Glisson, solchi ad H, legamenti, ilo e peduncolo epatico, vie biliari). Formatta sempre in modo diretto, schematico e sintetico per lettura su schermo piccolo senza preamboli.';
+    var cronologia = [{ role: 'system', content: systemPrompt }];
+
+    if (localStorage.getItem('groq_key')) {
+      keyInput.value = localStorage.getItem('groq_key');
+      setupBox.style.display = 'none';
+    }
+
+    function toggleKey() {
+      setupBox.style.display = (setupBox.style.display === 'none') ? 'block' : 'none';
     }
 
     function salvaKey() {
-      localStorage.setItem('gemini_key', keyInput.value.replace(/\s+/g, ''));
-      alert('Chiave salvata!');
+      var k = keyInput.value.replace(/\s+/g, '');
+      localStorage.setItem('groq_key', k);
+      if (k) { setupBox.style.display = 'none'; }
+      alert('Chiave Groq salvata!');
+    }
+
+    function nuovaChat() {
+      cronologia = [{ role: 'system', content: systemPrompt }];
+      chatBox.innerHTML = 'Nuova sessione Anatomia 1 pronta.';
     }
 
     function resetBtn() {
@@ -54,29 +76,28 @@
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function inviaConModello(key, testo, indice) {
+    function inviaConModello(key, indice) {
       if (indice >= modelli.length) {
         resetBtn();
-        aggiungiTesto('bot', 'Server Google occupati (503). Riprova tra qualche secondo.');
+        aggiungiTesto('bot', 'Server temporaneamente occupati. Riprova tra qualche secondo.');
         return;
       }
 
-      var modello = modelli[indice];
-      sendBtn.textContent = indice === 0 ? 'Invio...' : 'Riprovo (' + (indice + 1) + ')...';
+      sendBtn.textContent = indice === 0 ? 'Invio...' : 'Riprovo...';
 
       var xhr = new XMLHttpRequest();
-      var url = 'https://generativelanguage.googleapis.com/v1beta/' + modello + ':generateContent?key=' + encodeURIComponent(key);
-      xhr.open('POST', url, true);
+      xhr.open('POST', 'https://api.groq.com/openai/v1/chat/completions', true);
       xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Authorization', 'Bearer ' + key);
       xhr.timeout = 15000;
 
       xhr.ontimeout = function() {
-        inviaConModello(key, testo, indice + 1);
+        inviaConModello(key, indice + 1);
       };
 
       xhr.onerror = function() {
         resetBtn();
-        aggiungiTesto('bot', 'Errore di rete: controlla la connessione hotspot.');
+        aggiungiTesto('bot', 'Errore di rete: verifica la connessione hotspot.');
       };
 
       xhr.onreadystatechange = function() {
@@ -86,13 +107,14 @@
             resetBtn();
             try {
               var res = JSON.parse(xhr.responseText);
-              var risposta = res.candidates[0].content.parts[0].text;
-              aggiungiTesto('bot', 'Gemini: ' + risposta);
+              var risposta = res.choices[0].message.content;
+              cronologia.push({ role: 'assistant', content: risposta });
+              aggiungiTesto('bot', risposta);
             } catch (e) {
               aggiungiTesto('bot', 'Errore lettura risposta: ' + e.message);
             }
-          } else if (xhr.status === 503 || xhr.status === 404 || xhr.status === 429) {
-            inviaConModello(key, testo, indice + 1);
+          } else if (xhr.status === 429 || xhr.status === 503) {
+            inviaConModello(key, indice + 1);
           } else {
             resetBtn();
             aggiungiTesto('bot', 'Errore HTTP ' + xhr.status + ': ' + xhr.responseText);
@@ -101,20 +123,23 @@
       };
 
       xhr.send(JSON.stringify({
-        contents: [{ parts: [{ text: testo }] }]
+        model: modelli[indice],
+        temperature: 0.2,
+        messages: cronologia
       }));
     }
 
     function invia() {
       var key = keyInput.value.replace(/\s+/g, '');
       var testo = promptBox.value;
-      if (!key) { alert('Inserisci prima la API Key.'); return; }
+      if (!key) { setupBox.style.display = 'block'; alert('Inserisci prima la API Key Groq.'); return; }
       if (!testo) { return; }
 
       aggiungiTesto('user', 'Tu: ' + testo);
+      cronologia.push({ role: 'user', content: testo });
       promptBox.value = '';
       sendBtn.disabled = true;
-      inviaConModello(key, testo, 0);
+      inviaConModello(key, 0);
     }
   </script>
 </body>
