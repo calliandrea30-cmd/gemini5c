@@ -18,7 +18,7 @@
 </head>
 <body>
   <div id="setup">
-    <input type="password" id="apiKey" placeholder="Incolla qui la Google AI API Key">
+    <input type="password" id="apiKey" placeholder="Incolla qui la chiave API (AQ.Ab8...)">
     <button onclick="salvaKey()">Salva Chiave</button>
   </div>
   <div id="chat">Pronto. Inserisci la chiave API sopra e scrivi un messaggio.</div>
@@ -30,6 +30,7 @@
     var chatBox = document.getElementById('chat');
     var promptBox = document.getElementById('prompt');
     var sendBtn = document.getElementById('sendBtn');
+    var modelloAttivo = '';
 
     if (localStorage.getItem('gemini_key')) {
       keyInput.value = localStorage.getItem('gemini_key');
@@ -37,6 +38,7 @@
 
     function salvaKey() {
       localStorage.setItem('gemini_key', keyInput.value.replace(/\s+/g, ''));
+      modelloAttivo = '';
       alert('Chiave salvata!');
     }
 
@@ -46,6 +48,42 @@
       div.textContent = testo;
       chatBox.appendChild(div);
       chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function trovaModello(key, callback) {
+      if (modelloAttivo) { callback(null, modelloAttivo); return; }
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(key), true);
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            try {
+              var res = JSON.parse(xhr.responseText);
+              var lista = res.models || [];
+              var scelto = '';
+              for (var i = 0; i < lista.length; i++) {
+                var m = lista[i];
+                var metodi = m.supportedGenerationMethods || [];
+                if (metodi.indexOf('generateContent') !== -1 && m.name.indexOf('tts') === -1 && m.name.indexOf('image') === -1 && m.name.indexOf('live') === -1 && m.name.indexOf('transcribe') === -1) {
+                  scelto = m.name;
+                  if (m.name.indexOf('flash') !== -1) { break; }
+                }
+              }
+              if (scelto) {
+                modelloAttivo = scelto;
+                callback(null, scelto);
+              } else {
+                callback('Nessun modello testuale disponibile per questa chiave.');
+              }
+            } catch (e) {
+              callback('Errore lettura modelli: ' + e.message);
+            }
+          } else {
+            callback('Errore verifica chiave (' + xhr.status + '): ' + xhr.responseText);
+          }
+        }
+      };
+      xhr.send();
     }
 
     function invia() {
@@ -59,33 +97,42 @@
       sendBtn.disabled = true;
       sendBtn.textContent = 'Attendi...';
 
-      var xhr = new XMLHttpRequest();
-      var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(key);
-      xhr.open('POST', url, true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
+      trovaModello(key, function(err, modelName) {
+        if (err) {
           sendBtn.disabled = false;
           sendBtn.textContent = 'Invia';
-          if (xhr.status === 200) {
-            try {
-              var res = JSON.parse(xhr.responseText);
-              var risposta = res.candidates[0].content.parts[0].text;
-              aggiungiTesto('bot', 'Gemini: ' + risposta);
-            } catch (e) {
-              aggiungiTesto('bot', 'Errore lettura risposta: ' + e.message);
-            }
-          } else {
-            aggiungiTesto('bot', 'Errore HTTP ' + xhr.status + ': controlla la chiave API o la connessione.');
-          }
+          aggiungiTesto('bot', err);
+          return;
         }
-      };
 
-      var payload = JSON.stringify({
-        contents: [{ parts: [{ text: testo }] }]
+        var xhr = new XMLHttpRequest();
+        var url = 'https://generativelanguage.googleapis.com/v1beta/' + modelName + ':generateContent?key=' + encodeURIComponent(key);
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === 4) {
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Invia';
+            if (xhr.status === 200) {
+              try {
+                var res = JSON.parse(xhr.responseText);
+                var risposta = res.candidates[0].content.parts[0].text;
+                aggiungiTesto('bot', 'Gemini: ' + risposta);
+              } catch (e) {
+                aggiungiTesto('bot', 'Errore lettura risposta: ' + e.message);
+              }
+            } else {
+              aggiungiTesto('bot', 'Errore HTTP ' + xhr.status + ': ' + xhr.responseText);
+            }
+          }
+        };
+
+        var payload = JSON.stringify({
+          contents: [{ parts: [{ text: testo }] }]
+        });
+        xhr.send(payload);
       });
-      xhr.send(payload);
     }
   </script>
 </body>
